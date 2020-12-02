@@ -18,8 +18,8 @@ class AuthController extends Controller
 {
     //
     public function register (Request $request) {
-        DB::beginTransaction();
         try {
+            DB::beginTransaction();
             //code...
             $validator = Validator::make($request->all(), [
                 'username' => 'required|max:255|unique:users',
@@ -51,7 +51,7 @@ class AuthController extends Controller
         } catch (\Throwable $th) {
             DB::rollback();
             //throw $th;
-            return $this->getResponse(500);
+            return $this->getResponse(500, $th->getMessage());
         }
     }
 
@@ -92,7 +92,7 @@ class AuthController extends Controller
             ]);
         } catch (\Throwable $th) {
             // throw $th;
-            return $this->getResponse(500);
+            return $this->getResponse(500, $th->getMessage());
         }
     }
 
@@ -117,12 +117,21 @@ class AuthController extends Controller
             if ($diff >= (int)env('TOKEN_DURATION_HOUR', '24')) {
                 # code...
                 return $this->getResponse(401, 'Token expired');
-            } 
+            }
+            
+            $user = Users::find($data->id);
+            $data = [
+                "id" => $user->id,
+                "username" => $user->username,
+                "fullname" => $user->profile->fullname,
+                "email" => $user->profile->email,
+                "phone" => $user->profile->phone,
+            ];
             
             return $this->getResponse(200, false, $data);
         } catch (\Throwable $th) {
             //throw $th;
-            return $this->getResponse(500);
+            return $this->getResponse(500, $th->getMessage());
         }
     }
 
@@ -150,7 +159,7 @@ class AuthController extends Controller
             return $this->getResponse(200);
         } catch (\Throwable $th) {
             //throw $th;
-            return $this->getResponse(500);
+            return $this->getResponse(500, $th->getMessage());
         }
     }
 
@@ -178,6 +187,61 @@ class AuthController extends Controller
         } catch (\Throwable $th) {
             //throw $th;
             return false;
+        }
+    }
+
+    public function updateProfile(Request $request)
+    {
+        try {
+            //code...
+            DB::beginTransaction();
+            $validator = Validator::make($request->all(), [
+                'id' => 'required|numeric',
+                'username' => 'max:255|unique:users,username,'.$request->id,
+                'password' => 'max:255',
+                'fullname' => 'max:255',
+            ]);
+
+            $user = Users::find($request->id);
+            if ($request->username) {
+                $user->username = $request->username;
+                $user->push();
+            }
+            if ($request->password) {
+                # code...
+                $user->password = Hash::make($request->password);
+                $user->push();
+            }
+
+            $profile = Profile::where('id_user', $request->id)->first();
+            if ($request->fullname) {
+                # code...
+                $profile->fullname = $request->fullname;
+                $profile->push();
+            }
+            if ($request->email) {
+                # code...
+                $validator = Validator::make($request->all(), [
+                    'email' => 'email|unique:profile,email,'.$profile->id,
+                ]);
+                $profile->email = $request->email;
+                $profile->push();
+            }
+            if ($request->phone) {
+                # code...
+                $validator = Validator::make($request->all(), [
+                    'phone' => 'numeric|unique:profile,phone,'.$request->id
+                ]);
+                $profile->phone = $request->phone;
+                $profile->push();
+            }
+
+            DB::commit();
+            return $this->getResponse(200);
+        } catch (\Throwable $th) {
+            //throw $th;
+            DB::rollback();
+            return $this->getResponse(500, $th->getMessage());
         }
     }
 }

@@ -22,3 +22,4 @@ Route::post('/register', 'API\AuthController@register');
 Route::post('/login', 'API\AuthController@login');
 Route::post('/check', 'API\AuthController@checkToken');
 Route::post('/logout', 'API\AuthController@logout');
+Route::put('/profile', 'API\AuthController@updateProfile');
