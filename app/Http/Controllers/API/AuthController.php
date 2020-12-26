@@ -22,8 +22,8 @@ class AuthController extends Controller
             DB::beginTransaction();
             //code...
             $validator = Validator::make($request->all(), [
-                'username' => 'required|max:255|unique:users',
-                'password' => 'required|max:255',
+                'username' => 'required|max:255|min:6|unique:users',
+                'password' => 'required|max:255|min:6',
                 'fullname' => 'required|max:255',
                 'email' => 'required|email|unique:profile',
                 'phone' => 'required|numeric|unique:profile'
@@ -197,10 +197,14 @@ class AuthController extends Controller
             DB::beginTransaction();
             $validator = Validator::make($request->all(), [
                 'id' => 'required|numeric',
-                'username' => 'max:255|unique:users,username,'.$request->id,
-                'password' => 'max:255',
+                'username' => 'max:255|min:6|unique:users,username,'.$request->id,
+                'password' => 'max:255|min:6',
                 'fullname' => 'max:255',
             ]);
+
+            if ($validator->fails()) {
+                return $this->getResponse(406, $validator->errors()->first());
+            }
 
             $user = Users::find($request->id);
             if ($request->username) {
@@ -224,6 +228,9 @@ class AuthController extends Controller
                 $validator = Validator::make($request->all(), [
                     'email' => 'email|unique:profile,email,'.$profile->id,
                 ]);
+                if ($validator->fails()) {
+                    return $this->getResponse(406, $validator->errors()->first());
+                }
                 $profile->email = $request->email;
                 $profile->push();
             }
@@ -232,6 +239,9 @@ class AuthController extends Controller
                 $validator = Validator::make($request->all(), [
                     'phone' => 'numeric|unique:profile,phone,'.$request->id
                 ]);
+                if ($validator->fails()) {
+                    return $this->getResponse(406, $validator->errors()->first());
+                }
                 $profile->phone = $request->phone;
                 $profile->push();
             }
